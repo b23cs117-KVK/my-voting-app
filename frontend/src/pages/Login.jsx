@@ -1,0 +1,67 @@
+import React, { useState, useContext } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import axios from 'axios';
+import API_BASE_URL from '../config';
+import { AuthContext } from '../context/AuthContext';
+import { Lock, Mail } from 'lucide-react';
+
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
+      login(res.data.token, res.data.user);
+      if (res.data.user.role === 'admin') navigate('/admin');
+      else navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Login failed');
+    }
+  };
+
+  return (
+    <div className="center-wrapper animate-fade-in">
+      <div className="glass-panel auth-card">
+        <h2 className="text-center" style={{ marginBottom: '2rem' }}>Welcome Back</h2>
+        {error && <p className="text-danger text-center mb-4">{error}</p>}
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Email Address</label>
+            <div style={{ position: 'relative' }}>
+              <Mail size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <input 
+                type="email" 
+                className="form-input" 
+                style={{ width: '100%', paddingLeft: '2.5rem' }}
+                value={email} onChange={(e) => setEmail(e.target.value)} required 
+              />
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Password</label>
+            <div style={{ position: 'relative' }}>
+              <Lock size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              <input 
+                type="password" 
+                className="form-input" 
+                style={{ width: '100%', paddingLeft: '2.5rem' }}
+                value={password} onChange={(e) => setPassword(e.target.value)} required 
+              />
+            </div>
+          </div>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
+            Login to Account
+          </button>
+        </form>
+        <p className="text-center mt-4" style={{ fontSize: '0.9rem' }}>
+          Don't have an account? <Link to="/register" style={{ color: 'var(--primary-color)' }}>Register</Link>
+        </p>
+      </div>
+    </div>
+  );
+}
