@@ -21,9 +21,12 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/vote', require('./routes/voteRoutes'));
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/voting_app')
-  .then(() => {
-    console.log('Connected to Real Cloud MongoDB!');
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  })
-  .catch((err) => console.error('MongoDB connection error:', err));
+// Start Server immediately for better observability on Render
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  
+  // Connect to Database
+  mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/voting_app')
+    .then(() => console.log('Connected to Real Cloud MongoDB!'))
+    .catch((err) => console.error('MongoDB connection error:', err));
+});
