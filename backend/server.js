@@ -40,5 +40,9 @@ app.listen(PORT, () => {
   // Connect to Database
   mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/voting_app')
     .then(() => console.log('Connected to Real Cloud MongoDB!'))
-    .catch((err) => console.error('MongoDB connection error:', err));
+    .catch((err) => {
+      console.error('CRITICAL: MongoDB connection error!');
+      console.error('Error Name:', err.name);
+      console.error('Error Message:', err.message);
+    });
 });
