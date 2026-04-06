@@ -21,6 +21,18 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/vote', require('./routes/voteRoutes'));
 
+// Health Check / Debugging Route
+app.get('/api/health', (req, res) => {
+  const dbStatus = mongoose.connection.readyState;
+  // 0: disconnected, 1: connected, 2: connecting, 3: disconnecting
+  const statusMap = ["Disconnected", "Connected", "Connecting", "Disconnecting"];
+  res.json({ 
+    server: "Live", 
+    database: statusMap[dbStatus],
+    mongooseVersion: mongoose.version 
+  });
+});
+
 // Start Server immediately for better observability on Render
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
