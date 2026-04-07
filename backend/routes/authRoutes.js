@@ -10,13 +10,21 @@ const router = express.Router();
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
-  secure: true, // Use SSL/TLS directly on port 465
+  secure: true,
+  // Force IPv4 by specifying the family in the connection options
+  connectionManager: {
+    family: 4
+  },
   family: 4, 
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  connectionTimeout: 10000
+  tls: {
+    // This prevents connection drops on cloud environments
+    rejectUnauthorized: false,
+    servername: 'smtp.gmail.com'
+  }
 });
 
 router.post('/register', async (req, res) => {
