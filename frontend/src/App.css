@@ -196,12 +196,28 @@
   min-height: 80px;
 }
 
-.btn-danger {
-  background: #ef4444;
-  color: white;
-}
-
 .btn-danger:hover {
   background: #dc2626;
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+.candidate-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-bottom: 1px solid var(--border);
+  transition: transform 0.5s ease;
+}
+
+.candidate-card:hover .candidate-image {
+  transform: scale(1.05);
+}
+
+.admin-candidate-img {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin-right: 1rem;
+  border: 1px solid var(--border);
 }

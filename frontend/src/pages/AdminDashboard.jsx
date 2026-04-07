@@ -88,6 +88,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit for safety
+        setMessage('Error: File is too large (Max 2MB)');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewCandidate({ ...newCandidate, imageUrl: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const cancelEdit = () => {
     setEditingId(null);
     setNewCandidate({ name: '', party: '', description: '', imageUrl: '' });
@@ -129,10 +144,27 @@ export default function AdminDashboard() {
               <input type="text" className="form-input" value={newCandidate.party} onChange={e => setNewCandidate({...newCandidate, party: e.target.value})} required />
             </div>
             <div className="form-group">
-              <label>Image URL (Optional)</label>
-              <input type="text" className="form-input" value={newCandidate.imageUrl} onChange={e => setNewCandidate({...newCandidate, imageUrl: e.target.value})} />
+              <label>Candidate Image</label>
+              <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
+                {newCandidate.imageUrl && (
+                  <img 
+                    src={newCandidate.imageUrl} 
+                    alt="Preview" 
+                    style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }} 
+                  />
+                )}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleFileChange}
+                  className="form-input"
+                  style={{ padding: '0.5rem' }}
+                />
+                <p style={{ fontSize: '0.8rem', color: '#6b7280' }}>...or paste a URL below</p>
+                <input type="text" className="form-input" placeholder="Image URL (Optional)" value={newCandidate.imageUrl} onChange={e => setNewCandidate({...newCandidate, imageUrl: e.target.value})} />
+              </div>
             </div>
-            <div className="form-group">
+            <div className="form-group mt-4">
               <label>Description</label>
               <textarea className="form-input" rows="3" value={newCandidate.description} onChange={e => setNewCandidate({...newCandidate, description: e.target.value})} required />
             </div>
@@ -154,6 +186,9 @@ export default function AdminDashboard() {
           <div className="candidate-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', marginTop: '1rem' }}>
             {candidates.map(c => (
               <div key={c._id} className="candidate-card glass-panel flex-row" style={{ alignItems: 'center' }}>
+                {c.imageUrl && (
+                  <img src={c.imageUrl} alt={c.name} className="admin-candidate-img" />
+                )}
                 <div style={{ flex: 1, padding: '1rem' }}>
                   <span className="candidate-party">{c.party}</span>
                   <h4 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>{c.name}</h4>
