@@ -67,7 +67,15 @@ router.post('/login', async (req, res) => {
       text: `Your One-Time Password (OTP) for login is: ${otp}. It will expire in 5 minutes.`
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+      await transporter.sendMail(mailOptions);
+      console.log('OTP Email sent successfully to:', user.email);
+    } catch (mailError) {
+      console.error('CRITICAL: SMTP Email Error!');
+      console.error('Error Name:', mailError.name);
+      console.error('Error Message:', mailError.message);
+      return res.status(500).json({ error: 'Failed to send OTP email. Please check server logs.' });
+    }
 
     res.json({ otpRequired: true, message: 'OTP sent to your email' });
   } catch (err) {
