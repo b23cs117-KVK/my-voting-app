@@ -3,6 +3,12 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+
+// FORCE the entire server to use IPv4 first (fixes ENETUNREACH on Render/Cloud)
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 const router = express.Router();
 
@@ -11,19 +17,12 @@ const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
   secure: true,
-  // Force IPv4 by specifying the family in the connection options
-  connectionManager: {
-    family: 4
-  },
-  family: 4, 
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
   tls: {
-    // This prevents connection drops on cloud environments
-    rejectUnauthorized: false,
-    servername: 'smtp.gmail.com'
+    rejectUnauthorized: false
   }
 });
 
