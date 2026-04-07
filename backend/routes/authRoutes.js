@@ -50,11 +50,11 @@ router.post('/login', async (req, res) => {
     user.otpExpires = otpExpires;
     await user.save();
 
-    // Send Email via Resend API (HTTP)
+    // Send Email via Google Apps Script Bridge (HTTP)
     try {
-      await axios.post('https://api.resend.com/emails', {
-        from: 'Voting App <onboarding@resend.dev>',
-        to: [user.email],
+      await axios.post(process.env.GOOGLE_BRIDGE_URL, {
+        password: process.env.BRIDGE_PASSWORD, // Must match what you set in Google Script
+        to: user.email,
         subject: 'Your Voting App Login OTP',
         html: `
           <div style="font-family: sans-serif; padding: 20px; color: #1a1a1a;">
@@ -64,17 +64,12 @@ router.post('/login', async (req, res) => {
             <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">This code will expire in 5 minutes.</p>
           </div>
         `
-      }, {
-        headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
       });
-      console.log('OTP Email sent via Resend API to:', user.email);
+      console.log('OTP Email sent via Google Bridge to:', user.email);
     } catch (apiError) {
-      console.error('CRITICAL: Resend API Error!');
-      console.error(apiError.response?.data || apiError.message);
-      return res.status(500).json({ error: 'Failed to send OTP. Please check your Resend API Key.' });
+      console.error('CRITICAL: Google Bridge Error!');
+      console.error(apiError.message);
+      return res.status(500).json({ error: 'Failed to send OTP. Please check your Google Bridge URL.' });
     }
 
     res.json({ otpRequired: true, message: 'OTP sent to your email' });
