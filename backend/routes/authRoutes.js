@@ -9,9 +9,9 @@ const router = express.Router();
 // Email Transporter for OTP
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  family: 4, // Force IPv4 to stop ENETUNREACH error
+  port: 465,
+  secure: true, // Use SSL/TLS directly on port 465
+  family: 4, 
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
