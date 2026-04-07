@@ -9,70 +9,122 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setMessage('');
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
-      login(res.data.token, res.data.user);
-      if (res.data.user.role === 'admin') navigate('/admin');
-      else navigate('/dashboard');
+      if (!otpSent) {
+        // Step 1: Login with credentials
+        const res = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password });
+        if (res.data.otpRequired) {
+          setOtpSent(true);
+          setMessage('OTP has been sent to your email. Please check your inbox.');
+        } else {
+          // Fallback if OTP is disabled or skipped (shouldn't happen with current backend)
+          login(res.data.token, res.data.user);
+          if (res.data.user.role === 'admin') navigate('/admin');
+          else navigate('/dashboard');
+        }
+      } else {
+        // Step 2: Verify OTP
+        const res = await axios.post(`${API_BASE_URL}/api/auth/verify-otp`, { email, otp });
+        login(res.data.token, res.data.user);
+        if (res.data.user.role === 'admin') navigate('/admin');
+        else navigate('/dashboard');
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.error || 'Authentication failed');
     }
   };
 
   return (
     <div className="center-wrapper animate-fade-in">
       <div className="glass-panel auth-card">
-        <h2 className="text-center" style={{ marginBottom: '2rem' }}>Welcome Back</h2>
+        <h2 className="text-center" style={{ marginBottom: '2rem' }}>
+          {otpSent ? 'Enter OTP' : 'Welcome Back'}
+        </h2>
         {error && <p className="text-danger text-center mb-4">{error}</p>}
+        {message && <p className="text-success text-center mb-4" style={{ color: 'var(--success-color)' }}>{message}</p>}
+        
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Email Address</label>
-            <div style={{ position: 'relative' }}>
-              <Mail size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-              <input 
-                type="email" 
-                className="form-input" 
-                style={{ width: '100%', paddingLeft: '2.5rem' }}
-                value={email} onChange={(e) => setEmail(e.target.value)} required 
-              />
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Password</label>
-            <div style={{ position: 'relative' }}>
-              <Lock size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-              <input 
-                type={showPassword ? "text" : "password"} 
-                className="form-input" 
-                style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
-                value={password} onChange={(e) => setPassword(e.target.value)} required 
-              />
-              <div 
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ 
-                  position: 'absolute', 
-                  right: '1rem', 
-                  top: '50%', 
-                  transform: 'translateY(-50%)', 
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          {!otpSent ? (
+            <>
+              <div className="form-group">
+                <label>Email Address</label>
+                <div style={{ position: 'relative' }}>
+                  <Mail size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                  <input 
+                    type="email" 
+                    className="form-input" 
+                    style={{ width: '100%', paddingLeft: '2.5rem' }}
+                    value={email} onChange={(e) => setEmail(e.target.value)} required 
+                  />
+                </div>
               </div>
+              <div className="form-group">
+                <label>Password</label>
+                <div style={{ position: 'relative' }}>
+                  <Lock size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    className="form-input" 
+                    style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+                    value={password} onChange={(e) => setPassword(e.target.value)} required 
+                  />
+                  <div 
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{ 
+                      position: 'absolute', 
+                      right: '1rem', 
+                      top: '50%', 
+                      transform: 'translateY(-50%)', 
+                      cursor: 'pointer',
+                      color: 'var(--text-secondary)',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="form-group">
+              <label>Enter 6-Digit OTP</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                style={{ width: '100%', textAlign: 'center', letterSpacing: '0.5rem', fontSize: '1.5rem' }}
+                maxLength="6"
+                value={otp} onChange={(e) => setOtp(e.target.value)} required 
+                placeholder="000000"
+              />
             </div>
-          </div>
+          )}
+          
           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
-            Login to Account
+            {otpSent ? 'Verify & Login' : 'Login to Account'}
           </button>
+
+          {otpSent && (
+            <button 
+              type="button" 
+              className="btn mt-2" 
+              style={{ width: '100%', background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: '0.8rem' }}
+              onClick={() => { setOtpSent(false); setOtp(''); }}
+            >
+              Back to Password
+            </button>
+          )}
         </form>
         <p className="text-center mt-4" style={{ fontSize: '0.9rem' }}>
           Don't have an account? <Link to="/register" style={{ color: 'var(--primary-color)' }}>Register</Link>
