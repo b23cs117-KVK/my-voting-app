@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import API_BASE_URL from '../config';
 import { useNavigate } from 'react-router-dom';
-import { Power, PlusCircle } from 'lucide-react';
+import { Power, PlusCircle, Edit2, Trash2, X } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [candidates, setCandidates] = useState([]);
   const [election, setElection] = useState({ isOpen: false });
   const [newCandidate, setNewCandidate] = useState({ name: '', party: '', description: '', imageUrl: '' });
+  const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -38,19 +39,59 @@ export default function AdminDashboard() {
     }
   };
 
-  const addCandidate = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API_BASE_URL}/api/admin/candidates`, newCandidate, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setMessage('Candidate added successfully!');
+      if (editingId) {
+        await axios.put(`${API_BASE_URL}/api/admin/candidates/${editingId}`, newCandidate, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setMessage('Candidate updated successfully!');
+      } else {
+        await axios.post(`${API_BASE_URL}/api/admin/candidates`, newCandidate, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setMessage('Candidate added successfully!');
+      }
       setNewCandidate({ name: '', party: '', description: '', imageUrl: '' });
+      setEditingId(null);
       fetchCandidates();
     } catch (err) {
-      setMessage('Error adding candidate');
+      setMessage(editingId ? 'Error updating candidate' : 'Error adding candidate');
     }
+  };
+
+  const handleEdit = (candidate) => {
+    setEditingId(candidate._id);
+    setNewCandidate({
+      name: candidate.name,
+      party: candidate.party,
+      description: candidate.description,
+      imageUrl: candidate.imageUrl || ''
+    });
+    setMessage('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this candidate?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE_URL}/api/admin/candidates/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMessage('Candidate deleted successfully!');
+      fetchCandidates();
+    } catch (err) {
+      setMessage('Error deleting candidate');
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setNewCandidate({ name: '', party: '', description: '', imageUrl: '' });
+    setMessage('');
   };
 
   return (
@@ -75,9 +116,10 @@ export default function AdminDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
         <div className="glass-panel" style={{ padding: '2rem', alignSelf: 'start' }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <PlusCircle size={20} /> Add Candidate
+            {editingId ? <Edit2 size={20} /> : <PlusCircle size={20} />} 
+            {editingId ? 'Edit Candidate' : 'Add Candidate'}
           </h3>
-          <form onSubmit={addCandidate} className="mt-4">
+          <form onSubmit={handleSubmit} className="mt-4">
             <div className="form-group">
               <label>Name</label>
               <input type="text" className="form-input" value={newCandidate.name} onChange={e => setNewCandidate({...newCandidate, name: e.target.value})} required />
@@ -94,7 +136,16 @@ export default function AdminDashboard() {
               <label>Description</label>
               <textarea className="form-input" rows="3" value={newCandidate.description} onChange={e => setNewCandidate({...newCandidate, description: e.target.value})} required />
             </div>
-            <button className="btn btn-primary" style={{ width: '100%' }} type="submit">Add Candidate</button>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} type="submit">
+                {editingId ? 'Update Candidate' : 'Add Candidate'}
+              </button>
+              {editingId && (
+                <button className="btn btn-secondary" style={{ flex: 1 }} type="button" onClick={cancelEdit}>
+                  <X size={18} /> Cancel
+                </button>
+              )}
+            </div>
           </form>
         </div>
 
@@ -102,10 +153,28 @@ export default function AdminDashboard() {
           <h3>Current Candidates</h3>
           <div className="candidate-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', marginTop: '1rem' }}>
             {candidates.map(c => (
-              <div key={c._id} className="candidate-card glass-panel flex-row">
-                <div style={{ padding: '1rem' }}>
+              <div key={c._id} className="candidate-card glass-panel flex-row" style={{ alignItems: 'center' }}>
+                <div style={{ flex: 1, padding: '1rem' }}>
                   <span className="candidate-party">{c.party}</span>
                   <h4 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>{c.name}</h4>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', paddingRight: '1rem' }}>
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ padding: '0.5rem' }} 
+                    onClick={() => handleEdit(c)}
+                    title="Edit Candidate"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button 
+                    className="btn btn-danger" 
+                    style={{ padding: '0.5rem' }} 
+                    onClick={() => handleDelete(c._id)}
+                    title="Delete Candidate"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               </div>
             ))}
