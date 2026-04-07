@@ -2,29 +2,9 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const nodemailer = require('nodemailer');
-const dns = require('dns');
-
-// FORCE the entire server to use IPv4 first (fixes ENETUNREACH on Render/Cloud)
-if (dns.setDefaultResultOrder) {
-  dns.setDefaultResultOrder('ipv4first');
-}
+const axios = require('axios');
 
 const router = express.Router();
-
-// Email Transporter for OTP
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
 
 router.post('/register', async (req, res) => {
   try {
@@ -70,22 +50,31 @@ router.post('/login', async (req, res) => {
     user.otpExpires = otpExpires;
     await user.save();
 
-    // Send Email
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: 'Your Voting App Login OTP',
-      text: `Your One-Time Password (OTP) for login is: ${otp}. It will expire in 5 minutes.`
-    };
-
+    // Send Email via Resend API (HTTP)
     try {
-      await transporter.sendMail(mailOptions);
-      console.log('OTP Email sent successfully to:', user.email);
-    } catch (mailError) {
-      console.error('CRITICAL: SMTP Email Error!');
-      console.error('Error Name:', mailError.name);
-      console.error('Error Message:', mailError.message);
-      return res.status(500).json({ error: 'Failed to send OTP email. Please check server logs.' });
+      await axios.post('https://api.resend.com/emails', {
+        from: 'Voting App <onboarding@resend.dev>',
+        to: [user.email],
+        subject: 'Your Voting App Login OTP',
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; color: #1a1a1a;">
+            <h2 style="color: #3b82f6;">OTP Verification</h2>
+            <p>Your One-Time Password (OTP) for login is:</p>
+            <h1 style="color: #1a1a1a; font-size: 32px; letter-spacing: 5px; background: #f3f4f6; padding: 10px; display: inline-block; border-radius: 8px;">${otp}</h1>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">This code will expire in 5 minutes.</p>
+          </div>
+        `
+      }, {
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('OTP Email sent via Resend API to:', user.email);
+    } catch (apiError) {
+      console.error('CRITICAL: Resend API Error!');
+      console.error(apiError.response?.data || apiError.message);
+      return res.status(500).json({ error: 'Failed to send OTP. Please check your Resend API Key.' });
     }
 
     res.json({ otpRequired: true, message: 'OTP sent to your email' });
