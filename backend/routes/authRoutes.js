@@ -52,8 +52,8 @@ router.post('/login', async (req, res) => {
 
     // Send Email via Google Apps Script Bridge (HTTP)
     try {
-      await axios.post(process.env.GOOGLE_BRIDGE_URL, {
-        password: process.env.BRIDGE_PASSWORD, // Must match what you set in Google Script
+      const bridgeResponse = await axios.post(process.env.GOOGLE_BRIDGE_URL, {
+        password: process.env.BRIDGE_PASSWORD,
         to: user.email,
         subject: 'Your Voting App Login OTP',
         html: `
@@ -65,6 +65,7 @@ router.post('/login', async (req, res) => {
           </div>
         `
       });
+      console.log('OTP Email Bridge Status:', bridgeResponse.data);
       console.log('OTP Email sent via Google Bridge to:', user.email);
     } catch (apiError) {
       console.error('CRITICAL: Google Bridge Error!');
