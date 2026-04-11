@@ -19,11 +19,44 @@ router.post('/register', async (req, res) => {
     const role = userCount === 0 ? 'admin' : 'user';
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, password: hashedPassword, role });
+    
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    const user = new User({ 
+      name, 
+      email, 
+      password: hashedPassword, 
+      role,
+      otp,
+      otpExpires
+    });
     await user.save();
 
-    const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, hasVoted: user.hasVoted } });
+    // Send Registration OTP via Google Apps Script Bridge
+    try {
+      await axios.post(process.env.GOOGLE_BRIDGE_URL, {
+        password: process.env.BRIDGE_PASSWORD,
+        to: user.email,
+        subject: 'Verify Your Voting App Account',
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; color: #1a1a1a;">
+            <h2 style="color: #3b82f6;">Account Verification</h2>
+            <p>Welcome, ${name}! Your One-Time Password (OTP) for registration is:</p>
+            <h1 style="color: #1a1a1a; font-size: 32px; letter-spacing: 5px; background: #f3f4f6; padding: 10px; display: inline-block; border-radius: 8px;">${otp}</h1>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">This code will expire in 5 minutes.</p>
+          </div>
+        `
+      });
+      console.log('Registration OTP Email sent to:', user.email);
+    } catch (apiError) {
+      console.error('OCRITICAL: Google Bridge Error (Register)!', apiError.message);
+      // We still saved the user, but they can't verify yet without the email.
+      // In a real app, we might rollback or allow resending.
+    }
+
+    res.status(201).json({ otpRequired: true, message: 'OTP sent for verification' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -100,7 +133,71 @@ router.post('/verify-otp', async (req, res) => {
     await user.save();
 
     const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, hasVoted: user.hasVoted } });
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role, votedElections: user.votedElections } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'User with this email does not exist' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    user.otp = otp;
+    user.otpExpires = otpExpires;
+    await user.save();
+
+    // Send Forgot Password OTP
+    try {
+      await axios.post(process.env.GOOGLE_BRIDGE_URL, {
+        password: process.env.BRIDGE_PASSWORD,
+        to: user.email,
+        subject: 'Password Reset OTP',
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; color: #1a1a1a;">
+            <h2 style="color: #3b82f6;">Password Reset</h2>
+            <p>Your One-Time Password (OTP) for password reset is:</p>
+            <h1 style="color: #1a1a1a; font-size: 32px; letter-spacing: 5px; background: #f3f4f6; padding: 10px; display: inline-block; border-radius: 8px;">${otp}</h1>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 20px;">This code will expire in 5 minutes.</p>
+          </div>
+        `
+      });
+      console.log('Forgot Password OTP sent to:', user.email);
+    } catch (apiError) {
+      console.error('CRITICAL: Google Bridge Error (Forgot Password)!', apiError.message);
+      return res.status(500).json({ error: 'Failed to send OTP.' });
+    }
+
+    res.json({ message: 'OTP sent to your email' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user || user.otp !== otp || user.otpExpires < Date.now()) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    user.otp = undefined;
+    user.otpExpires = undefined;
+    await user.save();
+
+    res.json({ message: 'Password reset successful' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

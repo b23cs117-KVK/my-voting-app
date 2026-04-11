@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
-  hasVoted: { type: Boolean, default: false },
+  votedElections: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Election' }],
   otp: { type: String },
   otpExpires: { type: Date }
 });

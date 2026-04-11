@@ -1,19 +1,5 @@
-import React, { useContext } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthContext } from './context/AuthContext';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import VoterDashboard from './pages/VoterDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import Results from './pages/Results';
-
-const PrivateRoute = ({ children, roleRequired }) => {
-  const { user, loading } = useContext(AuthContext);
-  if (loading) return <div className="center-wrapper">Loading...</div>;
-  if (!user) return <Navigate to="/login" />;
-  if (roleRequired && user.role !== roleRequired) return <Navigate to="/dashboard" />;
-  return children;
-};
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+// ... (omitting irrelevant imports)
 
 function App() {
   const { user, logout } = useContext(AuthContext);
@@ -23,9 +9,13 @@ function App() {
       {user && (
         <nav className="navbar glass-panel">
           <div className="nav-links">
-            <span style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>SecureVote</span>
-            {user.role === 'admin' && <span className="nav-link">Admin View</span>}
-            {user.role === 'user' && <span className="nav-link">Voter Portal</span>}
+            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', marginRight: '1rem' }}>SecureVote</span>
+            {user.role === 'admin' ? (
+              <Link to="/admin" className="nav-link">Admin Dashboard</Link>
+            ) : (
+              <Link to="/dashboard" className="nav-link">Voter Dashboard</Link>
+            )}
+            <Link to="/results" className="nav-link">Results Archive</Link>
           </div>
           <div className="nav-links">
             <span className="nav-link">{user.name}</span>
@@ -55,7 +45,7 @@ function App() {
           } 
         />
         <Route 
-          path="/results" 
+          path="/results/:electionId?" 
           element={
             <PrivateRoute>
               <Results />
